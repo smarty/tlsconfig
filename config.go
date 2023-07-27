@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"strings"
@@ -51,7 +50,7 @@ func New(options ...option) (*tls.Config, error) {
 }
 func resolvePEM(source, filename string) ([]byte, error) {
 	if len(filename) > 0 {
-		if raw, err := ioutil.ReadFile(filename); err != nil {
+		if raw, err := os.ReadFile(filename); err != nil {
 			return nil, fmt.Errorf("%w: %s", ErrReadPEMFile, err)
 		} else {
 			return raw, nil
@@ -74,7 +73,7 @@ func tryReadValue(value string) string {
 	} else if parsed := parseURL(value); parsed != nil && parsed.Scheme == "env" {
 		return os.Getenv(parsed.Host)
 	} else if parsed != nil && parsed.Scheme == "file" {
-		raw, _ := ioutil.ReadFile(parsed.Path)
+		raw, _ := os.ReadFile(parsed.Path)
 		value = strings.TrimSpace(string(raw))
 		return value
 	} else {
