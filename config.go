@@ -38,6 +38,19 @@ func New(options ...option) (*tls.Config, error) {
 		return nil, fmt.Errorf("unable to parse trusted CA PEM: %w", ErrMalformedPEM)
 	}
 
+	for len(config.X509KeyPairs) > 0 {
+		var (
+			certPEMBlock = []byte(config.X509KeyPairs[0])
+			keyPEMBlock  = []byte(config.X509KeyPairs[1])
+		)
+		cert, err := tls.X509KeyPair(certPEMBlock, keyPEMBlock)
+		if err != nil {
+			return nil, fmt.Errorf("unable to parse x509 keypair from PEM: %w", err)
+		}
+		target.Certificates = append(target.Certificates, cert)
+		config.X509KeyPairs = config.X509KeyPairs[2:]
+	}
+
 	if len(config.ServerName) > 0 {
 		target.ServerName = config.ServerName
 	}
@@ -45,7 +58,7 @@ func New(options ...option) (*tls.Config, error) {
 	target.MinVersion = config.MinTLSVersion
 	target.MaxVersion = config.MaxTLSVersion
 
-	// FUTURE: support server certificate(s), RSA/EC private key, and password-protected RSA/EC private key
+	// FUTURE: support server certificate(s), and password-protected RSA/EC private key
 	return target, nil
 }
 func resolvePEM(source, filename string) ([]byte, error) {
@@ -98,6 +111,7 @@ type configuration struct {
 	ServerName         string
 	TrustedCAsPEM      string
 	TrustedCAsPEMFile  string
+	X509KeyPairs       []string
 	MinTLSVersion      uint16
 	MaxTLSVersion      uint16
 }
@@ -127,6 +141,9 @@ func (singleton) TrustedCAsPEMFile(value string) option {
 			this.TrustedCAsPEMFile = value
 		}
 	}
+}
+func (singleton) X509KeyPair(certPEMBlock, keyPEMBlock string) option {
+	return func(this *configuration) { this.X509KeyPairs = append(this.X509KeyPairs, certPEMBlock, keyPEMBlock) }
 }
 func (singleton) MinTLSVersion(value uint16) option {
 	return func(this *configuration) { this.MinTLSVersion = value }
